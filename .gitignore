@@ -1,0 +1,12 @@
+.ace-tool/
+.claude
+.playwright-mcp
+.serena/
+.sisyphus
+.workflow
+__pycache__/
+*.db
+*.sqlite3
+*.log
+.codex
+.vscode
