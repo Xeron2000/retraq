@@ -6,10 +6,10 @@ Retraq is a local-first crypto trade replay tool. v1 focuses on one tight workfl
 
 ## Phases
 
-- [ ] **Phase 1: Import Reliability & Schema Evolution** - Make Excel/manual import trustworthy and keep local trade data stable.
-- [ ] **Phase 2: Single-Trade Replay Core** - Open any trade fast and land on the correct replay window.
-- [ ] **Phase 3: Multi-Timeframe Compare & Lightweight Analytics** - Add supporting comparison and metrics without turning into a dashboard.
-- [ ] **Phase 4: Local UX Polish & Performance Hardening** - Keep the app responsive and remember local review state.
+- [x] **Phase 1: Import Reliability & Schema Evolution** - Make Excel/manual import trustworthy and keep local trade data stable.
+- [x] **Phase 2: Single-Trade Replay Core** - Open any trade fast and land on the correct replay window.
+- [x] **Phase 3: Multi-Timeframe Compare & Lightweight Analytics** - Add supporting comparison and metrics without turning into a dashboard.
+- [x] **Phase 4: Local UX Polish & Performance Hardening** - Keep the app responsive and remember local review state.
 
 ## Phase Details
 
@@ -22,7 +22,13 @@ Retraq is a local-first crypto trade replay tool. v1 focuses on one tight workfl
   2. User can see row-level errors for records that fail to import.
   3. User can re-import source rows without creating duplicate trades.
   4. User can review an import report that summarizes successes, failures, duplicates, and normalized timestamps.
-**Plans**: 4 plans
+**Plans**: 5 plans
+Plans:
+- [x] 01-01-PLAN.md — Backend test/migration foundation and locked import contracts
+- [x] 01-02-PLAN.md — Frontend test foundation and locked import report types
+- [x] 01-03-PLAN.md — Structured backend importer, dedupe/conflict logic, and report API
+- [x] 01-04-PLAN.md — Import entry/report UI for Phase 1 only
+- [x] 01-05-PLAN.md — Runtime wiring, route integration, and end-to-end verification
 **UI hint**: yes
 
 ### Phase 2: Single-Trade Replay Core
@@ -35,6 +41,10 @@ Retraq is a local-first crypto trade replay tool. v1 focuses on one tight workfl
   3. User can see entry/exit markers and relevant price lines on the chart.
   4. User can control play, pause, step, and speed, and resume the selected trade from saved progress.
 **Plans**: 4 plans
+- [x] 02-01-PLAN.md — Replay session contract and local progress primitives
+- [x] 02-02-PLAN.md — Replay bootstrap and TradeList handoff
+- [x] 02-03-PLAN.md — Replay transport and controls
+- [x] 02-04-PLAN.md — Replay flow integration and smoke coverage
 **UI hint**: yes
 
 ### Phase 3: Multi-Timeframe Compare & Lightweight Analytics
@@ -47,6 +57,11 @@ Retraq is a local-first crypto trade replay tool. v1 focuses on one tight workfl
   3. Compared charts stay synchronized by visible time range and crosshair position.
   4. User can view win rate, PnL, profit-loss ratio, equity curve, time/symbol distributions, and drawdown stats.
 **Plans**: 4 plans
+Plans:
+- [x] 03-01-PLAN.md — Compare mode contract, pane resolver, and mode-aware annotation rules
+- [x] 03-02-PLAN.md — Same-symbol multi-timeframe compare path and cross-timeframe sync
+- [x] 03-03-PLAN.md — Same-timeframe multi-symbol compare stabilization under explicit mode switching
+- [x] 03-04-PLAN.md — Lightweight replay analytics panel and final Phase 3 smoke coverage
 **UI hint**: yes
 
 ### Phase 4: Local UX Polish & Performance Hardening
@@ -57,6 +72,10 @@ Retraq is a local-first crypto trade replay tool. v1 focuses on one tight workfl
   1. User can return later and find the last-used replay layout and filters restored.
   2. User can export or back up local review data for safekeeping.
 **Plans**: 3 plans
+Plans:
+- [x] 04-01-PLAN.md — Replay workspace/filter persistence bootstrap
+- [x] 04-02-PLAN.md — Replay chart/layout + analytics panel persistence
+- [x] 04-03-PLAN.md — Local backup/export/restore entry point on `/import`
 **UI hint**: yes
 
 ## Progress
@@ -66,7 +85,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Import Reliability & Schema Evolution | 0/4 | Not started | - |
-| 2. Single-Trade Replay Core | 0/4 | Not started | - |
-| 3. Multi-Timeframe Compare & Lightweight Analytics | 0/4 | Not started | - |
-| 4. Local UX Polish & Performance Hardening | 0/3 | Not started | - |
+| 1. Import Reliability & Schema Evolution | 5/5 | Approved in worktree | 2026-04-11 |
+| 2. Single-Trade Replay Core | 4/4 | Completed in worktree | 2026-04-11 |
+| 3. Multi-Timeframe Compare & Lightweight Analytics | 4/4 | Completed in worktree | 2026-04-11 |
+| 4. Local UX Polish & Performance Hardening | 3/3 | Completed in worktree | 2026-04-11 |
