@@ -66,11 +66,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| IMPT-01 | Phase 1: Import Reliability & Schema Evolution | Pending |
+| IMPT-02 | Phase 1: Import Reliability & Schema Evolution | Pending |
+| IMPT-03 | Phase 1: Import Reliability & Schema Evolution | Pending |
+| IMPT-04 | Phase 1: Import Reliability & Schema Evolution | Pending |
+| IMPT-05 | Phase 1: Import Reliability & Schema Evolution | Pending |
+| REPL-01 | Phase 2: Single-Trade Replay Core | Pending |
+| REPL-02 | Phase 2: Single-Trade Replay Core | Pending |
+| REPL-03 | Phase 2: Single-Trade Replay Core | Pending |
+| REPL-04 | Phase 2: Single-Trade Replay Core | Pending |
+| STAT-02 | Phase 2: Single-Trade Replay Core | Pending |
+| COMP-01 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| COMP-02 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| COMP-03 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| ANLY-01 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| ANLY-02 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| ANLY-03 | Phase 3: Multi-Timeframe Compare & Lightweight Analytics | Pending |
+| STAT-01 | Phase 4: Local UX Polish & Performance Hardening | Pending |
+| STAT-03 | Phase 4: Local UX Polish & Performance Hardening | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
