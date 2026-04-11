@@ -2,17 +2,31 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { fetchStats, fetchTrades } from '../services/api';
 import type { StatsOverview, Trade } from '../services/api';
 import { Search, TrendingUp, TrendingDown, Filter, ChevronDown } from 'lucide-react';
+import { saveReplayWorkspace } from '../utils/replayWorkspace';
+
+const ALL_SYMBOLS_LABEL = '全部交易对';
+const LOADING_SKELETON_ROWS = ['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5', 'skeleton-6', 'skeleton-7', 'skeleton-8'] as const;
 
 interface Props {
+  selectedTrade?: Trade | null;
+  initialSymbol: string;
+  workspaceBootstrap: boolean;
   onSelectTrade: (trade: Trade | null) => void;
   onSymbolChange: (symbol: string) => void;
 }
 
-export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
-  const ALL_SYMBOLS_LABEL = '全部交易对';
+export default function TradeList({
+  selectedTrade = null,
+  initialSymbol,
+  workspaceBootstrap,
+  onSelectTrade,
+  onSymbolChange,
+}: Props) {
+  const selectedTradeId = selectedTrade?.id ?? null;
+  const selectedTradeSymbol = selectedTrade?.symbol ?? '';
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [selectedSymbol, setSelectedSymbol] = useState<string>('');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(selectedTradeSymbol || initialSymbol);
+  const [selectedId, setSelectedId] = useState<number | null>(selectedTradeId);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [symbolOptions, setSymbolOptions] = useState<Array<{ value: string; label: string; count: number }>>([
@@ -21,6 +35,21 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
   const modalRef = useRef<HTMLDialogElement | null>(null);
   const latestTradesRequestIdRef = useRef(0);
   const autoSelectNextFetchRef = useRef(false);
+  const hasInitialSelectedTradeRef = useRef(Boolean(selectedTrade));
+  const hasWorkspaceBootstrapRef = useRef(workspaceBootstrap && !selectedTrade);
+  const selectedTradeRef = useRef(selectedTrade);
+
+  useEffect(() => {
+    selectedTradeRef.current = selectedTrade;
+  }, [selectedTrade]);
+
+  useEffect(() => {
+    if (selectedTradeId === null) return;
+
+    setSelectedSymbol(selectedTradeSymbol);
+    setSelectedId(selectedTradeId);
+    autoSelectNextFetchRef.current = false;
+  }, [selectedTradeId, selectedTradeSymbol]);
 
   const selectedSymbolMeta = useMemo(() => {
     const selected = symbolOptions.find((opt) => opt.value === selectedSymbol);
@@ -28,7 +57,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
     return selectedSymbol
       ? { value: selectedSymbol, label: selectedSymbol, count: 0 }
       : { value: '', label: ALL_SYMBOLS_LABEL, count: 0 };
-  }, [ALL_SYMBOLS_LABEL, selectedSymbol, symbolOptions]);
+  }, [selectedSymbol, symbolOptions]);
 
   useEffect(() => {
     fetchStats()
@@ -39,11 +68,15 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
 
         const options = [{ value: '', label: ALL_SYMBOLS_LABEL, count: stats.trade_count }, ...sortedSymbols];
         setSymbolOptions(options);
-        
+
+        if (hasInitialSelectedTradeRef.current || hasWorkspaceBootstrapRef.current) {
+          return;
+        }
+
         // 优先选择 BTC 相关的交易对，否则选择交易数量最多的
         const btcSymbol = sortedSymbols.find((s) => s.value.toUpperCase().includes('BTC'));
         const defaultSymbol = btcSymbol || sortedSymbols[0];
-        
+
         if (defaultSymbol) {
           autoSelectNextFetchRef.current = true;
           setSelectedSymbol(defaultSymbol.value);
@@ -67,6 +100,11 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
       .then((data) => {
         if (requestId !== latestTradesRequestIdRef.current) return;
         setTrades(data);
+
+        if (selectedTradeRef.current) {
+          return;
+        }
+
         if (autoSelectNextFetchRef.current) {
           autoSelectNextFetchRef.current = false;
           const latestTrade = data.reduce<Trade | null>((latest, trade) => {
@@ -85,7 +123,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
         setLoading(false);
       });
   }, [onSelectTrade, selectedSymbol]);
-  
+
   const filteredSymbolOptions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return symbolOptions;
@@ -94,11 +132,21 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
 
   const openModal = () => {
     setSearchQuery('');
-    modalRef.current?.showModal();
+    if (typeof modalRef.current?.showModal === 'function') {
+      modalRef.current.showModal();
+      return;
+    }
+
+    modalRef.current?.setAttribute('open', '');
   };
 
   const closeModal = () => {
-    modalRef.current?.close();
+    if (typeof modalRef.current?.close === 'function') {
+      modalRef.current.close();
+      return;
+    }
+
+    modalRef.current?.removeAttribute('open');
   };
 
   const handleSymbolChange = (symbol: string) => {
@@ -106,6 +154,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
     onSelectTrade(null);
     autoSelectNextFetchRef.current = true;
     setSelectedSymbol(symbol);
+    saveReplayWorkspace(symbol);
     onSymbolChange(symbol);
     closeModal();
   };
@@ -116,6 +165,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
     if (selectedSymbol !== trade.symbol) {
       setSelectedSymbol(trade.symbol);
     }
+    saveReplayWorkspace(trade.symbol);
   };
 
   return (
@@ -200,8 +250,8 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
         
         <div className="p-2 overflow-y-auto flex-grow space-y-1">
           {loading ? (
-            [...Array(8)].map((_, i) => (
-              <div key={i} className="pointer-events-none rounded-xl border border-base-300/40 bg-base-100/20 px-3 py-2">
+            LOADING_SKELETON_ROWS.map((rowKey) => (
+              <div key={rowKey} className="pointer-events-none rounded-xl border border-base-300/40 bg-base-100/20 px-3 py-2">
                 <div className="flex justify-between items-center opacity-60">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-8 w-8 bg-base-300 rounded-lg animate-pulse" />
