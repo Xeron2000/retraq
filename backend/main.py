@@ -33,31 +33,6 @@ class DatasetUpdate(BaseModel):
     name: str = Field(..., min_length=1, max_length=128)
 
 
-SAMPLE_LANGGE_PATH = os.path.join(os.path.dirname(__file__), "..", "samples", "langge-delivery-example.xlsx")
-SAMPLE_LANGGE_LABEL = "浪哥交割单（示例）"
-
-
-@app.post("/api/import/sample-langge")
-def import_sample_langge(
-    replace: bool = Query(True),
-    db: Session = Depends(get_db),
-):
-    if not os.path.isfile(SAMPLE_LANGGE_PATH):
-        raise HTTPException(404, "示例文件不存在：samples/langge-delivery-example.xlsx")
-    dataset = _find_or_create_dataset(db, SAMPLE_LANGGE_LABEL)
-    if replace:
-        db.query(Trade).filter(Trade.dataset_id == dataset.id).delete()
-        db.commit()
-    try:
-        result = trade_importer.parse_file(db, SAMPLE_LANGGE_PATH, dataset.id, "langge")
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    result["dataset_id"] = dataset.id
-    result["dataset_name"] = dataset.name
-    result["replaced"] = replace
-    return result
-
-
 @app.get("/api/import/templates")
 def list_import_templates():
     return {
@@ -86,7 +61,7 @@ def update_dataset(dataset_id: int, body: DatasetUpdate, db: Session = Depends(g
     other = db.query(Dataset).filter(Dataset.name == body.name, Dataset.id != dataset_id).first()
     if other:
         raise HTTPException(400, "Dataset name already exists")
-    d.name = body.name
+    d.name = body.name  # type: ignore[assignment]
     db.commit()
     db.refresh(d)
     return {"id": d.id, "name": d.name, "created_at": d.created_at}
@@ -164,7 +139,7 @@ def _find_or_create_dataset(db: Session, name: str) -> Dataset:
 @app.post("/api/trades/import")
 async def import_trades(
     file: UploadFile = File(...),
-    template: str = Query("langge"),
+    template: str = Query("auto"),
     replace: bool = Query(True),
     label: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -196,7 +171,7 @@ async def import_trades(
             tmp.write(content)
             tmp_path = tmp.name
         resolved = detect_template(tmp_path) if template == "auto" else template
-        result = trade_importer.parse_file(db, tmp_path, dataset_id, resolved)
+        result = trade_importer.parse_file(db, tmp_path, int(dataset_id), resolved)
         result["template"] = resolved
         result["dataset_id"] = dataset_id
         result["dataset_name"] = dataset.name
@@ -310,3 +285,10 @@ def get_stats_symbols(request: Request, db: Session = Depends(get_db)):
 def get_stats_overview(request: Request, db: Session = Depends(get_db)):
     dataset_id = get_dataset_id(request, db)
     return trade_analyzer.calculate_stats(db, dataset_id)
+
+
+_static_dir = os.getenv("RETRAQ_STATIC_DIR")
+if _static_dir and os.path.isdir(_static_dir):
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")

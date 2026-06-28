@@ -126,7 +126,7 @@ export default function DatasetPicker() {
       <button
         type="button"
         className="btn btn-ghost btn-square h-11 min-h-11 w-11 rounded-xl border border-white/[0.08] bg-base-100/40"
-        title="导入表格（自动识别浪哥 / 币安）"
+        title="导入表格（自动识别交割单 / 币安）"
         disabled={importBusy}
         onClick={() => fileRef.current?.click()}
       >

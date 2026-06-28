@@ -24,7 +24,7 @@ class TradeAnalyzer:
             for t in db.query(Trade)
             .filter(Trade.dataset_id == dataset_id, Trade.profit.isnot(None))
             .all()
-            if is_valid_symbol(t.symbol)
+            if is_valid_symbol(str(t.symbol))
         ]
 
         if not trades:
@@ -53,18 +53,18 @@ class TradeAnalyzer:
         profit_factor = total_profit / total_loss if total_loss > 0 else total_profit
 
         # Max drawdown
-        cumulative = []
-        running = 0
+        cumulative: list[float] = []
+        running = 0.0
         for t in sorted(trades, key=lambda x: x.entry_time):
-            running += t.profit
+            running += float(t.profit)
             cumulative.append(running)
 
         peak = cumulative[0]
-        max_drawdown = 0
+        max_drawdown = 0.0
         for val in cumulative:
             if val > peak:
                 peak = val
-            dd = peak - val
+            dd = float(peak - val)
             if dd > max_drawdown:
                 max_drawdown = dd
 

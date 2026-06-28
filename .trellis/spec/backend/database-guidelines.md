@@ -18,7 +18,7 @@
 
 | Template id | Detection |
 |-------------|-----------|
-| `langge` | Header row 0, column `交易对` |
+| `langge` | Header row 0, column `交易对` (example: `samples/bit-langge-delivery-example.xlsx`) |
 | `binance_futures_trades` | Header row 9, trade history columns |
 | `binance_futures` | Header row 9, position history columns |
 

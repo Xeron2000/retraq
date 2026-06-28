@@ -97,7 +97,7 @@ function HourStrip({ stats }: { stats: TimeAnalysis['hourlyStats'] }) {
 }
 
 export default function AnalysisPage() {
-  const { activeDatasetId } = useDataset();
+  const { activeDatasetId, tradesRevision } = useDataset();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export default function AnalysisPage() {
       .then(setTrades)
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
-  }, [activeDatasetId]);
+  }, [activeDatasetId, tradesRevision]);
 
   const core = useCoreAnalysis(trades);
   const time = useMemo(() => analyzeTimePatterns(trades), [trades]);

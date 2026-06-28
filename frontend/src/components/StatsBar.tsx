@@ -14,7 +14,7 @@ function StatCard({ label, value, description, valueColor }: { label: string; va
 }
 
 export default function StatsBar() {
-  const { activeDatasetId } = useDataset();
+  const { activeDatasetId, tradesRevision } = useDataset();
   const [stats, setStats] = useState<StatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +25,7 @@ export default function StatsBar() {
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [activeDatasetId]);
+  }, [activeDatasetId, tradesRevision]);
 
   if (loading) {
     return (

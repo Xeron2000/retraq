@@ -3,7 +3,10 @@ import { ACTIVE_DATASET_STORAGE_KEY } from '../constants/datasetStorage';
 
 axios.interceptors.request.use((config) => {
   const url = config.url ?? '';
-  const needsDataset = url.includes('/api/trades') || url.includes('/api/stats/');
+  const path = url.split('?')[0];
+  const needsDataset =
+    path.includes('/api/stats/') ||
+    (path.includes('/api/trades') && !path.endsWith('/import'));
   if (needsDataset) {
     const id = localStorage.getItem(ACTIVE_DATASET_STORAGE_KEY);
     if (id) {
@@ -162,21 +165,17 @@ export type ImportResult = {
   total: number;
   success: number;
   failed: number;
+  template?: string;
   dataset_id?: number;
   dataset_name?: string;
   replaced?: boolean;
+  fills?: number;
+  closed_positions?: number;
 };
-
-export async function importSampleLangge(replace = true): Promise<ImportResult> {
-  const { data } = await axios.post<ImportResult>('/api/import/sample-langge', null, {
-    params: { replace },
-  });
-  return data;
-}
 
 export async function importTrades(
   file: File,
-  template: string = 'langge',
+  template: string = 'auto',
   options?: { replace?: boolean; label?: string },
 ): Promise<ImportResult> {
   const formData = new FormData();

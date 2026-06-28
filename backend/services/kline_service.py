@@ -155,7 +155,7 @@ class KlineService:
             return [(start_ts, end_ts)]
 
         missing: list[tuple[int, int]] = []
-        first_ts = cached[0].timestamp
+        first_ts = int(cached[0].timestamp)
         if first_ts > start_ts:
             gap_end = first_ts - step_ms
             if start_ts <= gap_end:
@@ -163,7 +163,7 @@ class KlineService:
 
         prev_ts = first_ts
         for k in cached[1:]:
-            ts = k.timestamp
+            ts = int(k.timestamp)
             if ts <= prev_ts:
                 continue
             if ts - prev_ts > step_ms:
@@ -173,7 +173,7 @@ class KlineService:
                     missing.append((gap_start, gap_end))
             prev_ts = ts
 
-        last_ts = cached[-1].timestamp
+        last_ts = int(cached[-1].timestamp)
         if last_ts < end_ts:
             gap_start = last_ts + step_ms
             if gap_start <= end_ts:
@@ -195,6 +195,25 @@ class KlineService:
             raise ValueError(f"Invalid timeframe. Supported: {TIMEFRAMES}")
 
         step_ms = TIMEFRAME_MS[timeframe]
+        last_error: Exception | None = None
+
+        def fetch_latest_from_exchanges() -> list[dict]:
+            nonlocal last_error
+            ccxt_symbol = symbol.replace("-", "/")
+            for exchange in self.exchanges:
+                try:
+                    ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe, limit=limit)  # type: ignore[attr-defined]
+                    self._store_ohlcv(db, symbol, timeframe, ohlcv)
+                    db.commit()
+                    return [self._candle_to_dict(c) for c in ohlcv]
+                except Exception as exc:
+                    last_error = exc
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+            raise last_error or RuntimeError("Failed to fetch klines")
+
         if start_ts is None and end_ts is None:
             cached = (
                 db.query(Kline)
@@ -205,46 +224,20 @@ class KlineService:
             )
 
             if force_refresh:
-                last_error: Exception | None = None
-                ccxt_symbol = symbol.replace("-", "/")
-                for exchange in self.exchanges:
-                    try:
-                        ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe, limit=limit)
-                        self._store_ohlcv(db, symbol, timeframe, ohlcv)
-                        db.commit()
-                        return [self._candle_to_dict(c) for c in ohlcv]
-                    except Exception as exc:
-                        last_error = exc
-                        try:
-                            db.rollback()
-                        except Exception:
-                            pass
-                        continue
-                if cached:
-                    return [self._to_dict(k) for k in reversed(cached)]
-                raise last_error or RuntimeError("Failed to fetch klines")
+                try:
+                    return fetch_latest_from_exchanges()
+                except RuntimeError:
+                    if cached:
+                        return [self._to_dict(k) for k in reversed(cached)]
+                    raise
 
             if cached:
                 return [self._to_dict(k) for k in reversed(cached)]
 
-            last_error: Exception | None = None
-            ccxt_symbol = symbol.replace("-", "/")
-            for exchange in self.exchanges:
-                try:
-                    ohlcv = exchange.fetch_ohlcv(ccxt_symbol, timeframe, limit=limit)
-                    self._store_ohlcv(db, symbol, timeframe, ohlcv)
-                    db.commit()
-                    return [self._candle_to_dict(c) for c in ohlcv]
-                except Exception as exc:
-                    last_error = exc
-                    try:
-                        db.rollback()
-                    except Exception:
-                        pass
-                    continue
-            raise last_error or RuntimeError("Failed to fetch klines")
+            return fetch_latest_from_exchanges()
 
         if start_ts is None:
+            assert end_ts is not None
             start_ts = end_ts - (limit * step_ms)
         if end_ts is None:
             end_ts = start_ts + (limit * step_ms)
@@ -257,7 +250,7 @@ class KlineService:
         if not force_refresh and not missing and self._range_is_covered(cached, start_ts, end_ts, step_ms):
             return [self._to_dict(k) for k in cached]
 
-        last_error: Exception | None = None
+        last_error = None
         for gap_start, gap_end in missing:
             for exchange in self.exchanges:
                 try:

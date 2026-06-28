@@ -52,7 +52,7 @@ TEMPLATE_SPECS: dict[str, dict] = {
 }
 
 TEMPLATE_LABELS = {
-    "langge": "浪哥交割单（xlsx/csv）",
+    "langge": "交割单表格（xlsx/csv）",
     "binance_futures_trades": "币安 U 本位合约交易历史（推荐）",
     "binance_futures": "币安 U 本位合约仓位历史",
 }
@@ -68,7 +68,7 @@ def detect_template(file_path: str) -> str:
         if "交易对" in df.columns:
             return "langge"
         raise ValueError(
-            "无法识别 CSV 格式。请使用浪哥交割单表头（含「交易对」列）。"
+            "无法识别 CSV 格式。请使用交割单表头（含「交易对」列）。"
         )
     hdr0 = pd.read_excel(file_path, engine="openpyxl", header=0, nrows=2)
     if "交易对" in hdr0.columns:
@@ -82,7 +82,7 @@ def detect_template(file_path: str) -> str:
     if pos_keys.issubset(cols):
         return "binance_futures"
     raise ValueError(
-        "无法识别表格格式。支持：浪哥交割单、币安 U 本位交易历史、币安仓位历史。"
+        "无法识别表格格式。支持：交割单表格、币安 U 本位交易历史、币安仓位历史。"
     )
 
 
@@ -203,7 +203,7 @@ class TradeImporter:
         missing = [k for k in ("symbol", "entry_price", "entry_time") if k not in df.columns]
         if missing:
             raise ValueError(
-                f"列映射失败，缺少 {missing}。浪哥→langge；币安交易历史→binance_futures_trades；币安仓位历史→binance_futures。"
+                f"列映射失败，缺少 {missing}。交割单→langge；币安交易历史→binance_futures_trades；币安仓位历史→binance_futures。"
             )
         if template_id == "binance_futures" and "status" in df.columns:
             df = df[df["status"].astype(str).str.strip().str.lower() == "closed"]

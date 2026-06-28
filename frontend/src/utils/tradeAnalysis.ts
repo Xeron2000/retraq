@@ -318,8 +318,8 @@ export function analyzeBehavior(trades: Trade[]): BehaviorAnalysis {
     .map(([date, data]) => ({ date, tradeCount: data.count, pnl: data.pnl }));
 
   // Post-win vs post-loss behavior
-  let postWinTrades: Trade[] = [];
-  let postLossTrades: Trade[] = [];
+  const postWinTrades: Trade[] = [];
+  const postLossTrades: Trade[] = [];
 
   for (let i = 1; i < profitTrades.length; i++) {
     const prev = profitTrades[i - 1];
@@ -452,7 +452,7 @@ export function analyzeRisk(trades: Trade[]): RiskAnalysis {
   });
 
   // Calculate recovery trades (optimized O(n) algorithm)
-  let recoveryTrades: number[] = [];
+  const recoveryTrades: number[] = [];
   let inDrawdown = false;
   let drawdownStart = 0;
   cumulative = 0;
