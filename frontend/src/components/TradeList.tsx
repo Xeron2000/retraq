@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { useProfile } from '../context/ProfileContext';
 import { fetchStats, fetchTrades } from '../services/api';
 import type { StatsOverview, Trade } from '../services/api';
 import { Search, TrendingUp, TrendingDown, Filter, ChevronDown } from 'lucide-react';
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
+  const { activeProfileId } = useProfile();
   const ALL_SYMBOLS_LABEL = '全部交易对';
   const [trades, setTrades] = useState<Trade[]>([]);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('');
@@ -31,6 +33,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
   }, [ALL_SYMBOLS_LABEL, selectedSymbol, symbolOptions]);
 
   useEffect(() => {
+    if (activeProfileId == null) return;
     fetchStats()
       .then((stats: StatsOverview) => {
         const sortedSymbols = Object.entries(stats.symbol_distribution)
@@ -54,9 +57,10 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
         console.error(err);
         setSymbolOptions([{ value: '', label: ALL_SYMBOLS_LABEL, count: 0 }]);
       });
-  }, [onSymbolChange]);
+  }, [onSymbolChange, activeProfileId]);
 
   useEffect(() => {
+    if (activeProfileId == null) return;
     setLoading(true);
     latestTradesRequestIdRef.current += 1;
     const requestId = latestTradesRequestIdRef.current;
@@ -84,7 +88,7 @@ export default function TradeList({ onSelectTrade, onSymbolChange }: Props) {
         if (requestId !== latestTradesRequestIdRef.current) return;
         setLoading(false);
       });
-  }, [onSelectTrade, selectedSymbol]);
+  }, [onSelectTrade, selectedSymbol, activeProfileId]);
   
   const filteredSymbolOptions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

@@ -1,5 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, BigInteger, Index
+from sqlalchemy import Column, Integer, String, Float, BigInteger, Index, ForeignKey, DateTime
+from sqlalchemy.sql import func
 from database import Base
+
+
+class Profile(Base):
+    __tablename__ = "profiles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), nullable=False, unique=True)
+    user_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class Kline(Base):
@@ -24,6 +34,7 @@ class Trade(Base):
     __tablename__ = "trades"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True)
     symbol = Column(String(32), nullable=False)
     direction = Column(String(8), nullable=False)
     leverage = Column(Float, default=1.0)
@@ -35,4 +46,7 @@ class Trade(Base):
     exit_time = Column(BigInteger)
     margin = Column(Float)
 
-    __table_args__ = (Index("ix_trade_symbol", "symbol"),)
+    __table_args__ = (
+        Index("ix_trade_symbol", "symbol"),
+        Index("ix_trade_profile_entry", "profile_id", "entry_time"),
+    )

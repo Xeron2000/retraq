@@ -5,8 +5,14 @@ from services.symbol_utils import is_valid_symbol
 
 
 class TradeAnalyzer:
-    def calculate_stats(self, db: Session) -> dict:
-        trades = [t for t in db.query(Trade).filter(Trade.profit.isnot(None)).all() if is_valid_symbol(t.symbol)]
+    def calculate_stats(self, db: Session, profile_id: int) -> dict:
+        trades = [
+            t
+            for t in db.query(Trade)
+            .filter(Trade.profile_id == profile_id, Trade.profit.isnot(None))
+            .all()
+            if is_valid_symbol(t.symbol)
+        ]
 
         if not trades:
             return {

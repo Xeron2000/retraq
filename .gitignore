@@ -10,3 +10,4 @@ __pycache__/
 *.log
 .codex
 .vscode
+.pi

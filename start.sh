@@ -8,7 +8,7 @@ echo "🚀 Starting backend..."
 cd backend
 uv sync
 
-# Import sample data
+# Migrate DB + seed example profile when empty
 echo "📥 Importing sample data..."
 uv run python import_data.py
 

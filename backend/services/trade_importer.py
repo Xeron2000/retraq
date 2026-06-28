@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from models import Trade
 from services.symbol_utils import normalize_symbol, is_valid_symbol
 
-# Excel column mapping
+# Excel column mapping (langge template)
 COLUMN_MAP = {
     "交易对": "symbol",
     "方向": "direction",
@@ -17,11 +17,22 @@ COLUMN_MAP = {
     "卖出时间": "exit_time",
 }
 
+TEMPLATES = {"langge": COLUMN_MAP}
+
 
 class TradeImporter:
-    def parse_excel(self, db: Session, file_path: str) -> dict:
-        df = pd.read_excel(file_path, engine="openpyxl")
-        df = df.rename(columns=COLUMN_MAP)
+    def parse_file(
+        self, db: Session, file_path: str, profile_id: int, template_id: str = "langge"
+    ) -> dict:
+        if template_id not in TEMPLATES:
+            raise ValueError(f"Unknown template: {template_id}")
+        column_map = TEMPLATES[template_id]
+        lower = file_path.lower()
+        if lower.endswith(".csv"):
+            df = pd.read_csv(file_path)
+        else:
+            df = pd.read_excel(file_path, engine="openpyxl")
+        df = df.rename(columns=column_map)
 
         # Filter out invalid rows (must have valid entry_price and entry_time)
         df = df[df["entry_price"].notna() & df["entry_time"].notna()]
@@ -43,6 +54,7 @@ class TradeImporter:
                     continue
 
                 trade = Trade(
+                    profile_id=profile_id,
                     symbol=normalized_symbol,
                     direction=self._normalize_direction(row["direction"]),
                     leverage=float(row.get("leverage", 1)) if pd.notna(row.get("leverage")) else 1,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useProfile } from '../context/ProfileContext';
 import { fetchTrades } from '../services/api';
 import type { Trade } from '../services/api';
 import {
@@ -827,19 +828,21 @@ function _InsightsTab({ insights }: { insights: SmartInsight[] }) {
 // ============================================
 
 export default function AnalysisPage() {
+  const { activeProfileId } = useProfile();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   useEffect(() => {
+    if (activeProfileId == null) return;
     setLoading(true);
     setError(null);
     fetchTrades(undefined, { maxPages: 200, limit: 500 })
       .then(setTrades)
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeProfileId]);
 
   // Compute all analyses
   const analysis = useMemo(() => {

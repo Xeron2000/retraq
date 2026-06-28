@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { createChart, CandlestickSeries, HistogramSeries, LineSeries, createSeriesMarkers } from 'lightweight-charts';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import type { CandlestickData, HistogramData, LineData, SeriesMarker, Time } from 'lightweight-charts';
+import { useProfile } from '../context/ProfileContext';
 import { fetchKlines, fetchStats } from '../services/api';
 import type { Kline, StatsOverview, Trade, Timeframe } from '../services/api';
 
@@ -50,6 +51,7 @@ interface Props {
 }
 
 export default function ChartManager({ symbol, selectedTrade }: Props) {
+  const { activeProfileId } = useProfile();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const compareContainerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<any | null>(null);
@@ -97,6 +99,7 @@ export default function ChartManager({ symbol, selectedTrade }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
+    if (activeProfileId == null) return;
     fetchStats()
       .then((stats: StatsOverview) => {
         const sorted = Object.entries(stats.symbol_distribution)
@@ -109,7 +112,7 @@ export default function ChartManager({ symbol, selectedTrade }: Props) {
       .catch(() => {
         setSymbolOptions([{ value: DEFAULT_COMPARE_SYMBOL, label: DEFAULT_COMPARE_SYMBOL }]);
       });
-  }, []);
+  }, [activeProfileId]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

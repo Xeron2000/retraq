@@ -1,4 +1,19 @@
 import axios from 'axios';
+import { ACTIVE_PROFILE_STORAGE_KEY } from '../constants/profileStorage';
+
+axios.interceptors.request.use((config) => {
+  const url = config.url ?? '';
+  const needsProfile =
+    url.includes('/api/trades') || url.includes('/api/stats/overview');
+  if (needsProfile) {
+    const id = localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY);
+    if (id) {
+      config.headers = config.headers ?? {};
+      config.headers['X-Profile-Id'] = id;
+    }
+  }
+  return config;
+});
 
 export interface Kline {
   time: number;
@@ -32,6 +47,39 @@ export interface TradesResponse {
   data: Trade[];
 }
 
+export interface Profile {
+  id: number;
+  name: string;
+  user_id: number | null;
+  created_at: string | null;
+}
+
+export async function fetchProfiles(): Promise<{ data: Profile[] }> {
+  const { data } = await axios.get<{ data: Profile[] }>('/api/profiles');
+  return data;
+}
+
+export async function createProfile(name: string): Promise<Profile> {
+  const { data } = await axios.post<Profile>('/api/profiles', { name });
+  return data;
+}
+
+export async function updateProfile(id: number, name: string): Promise<Profile> {
+  const { data } = await axios.patch<Profile>(`/api/profiles/${id}`, { name });
+  return data;
+}
+
+export async function deleteProfile(id: number): Promise<void> {
+  await axios.delete(`/api/profiles/${id}`);
+}
+
+export async function fetchImportTemplates(): Promise<{ id: string; label: string }[]> {
+  const { data } = await axios.get<{ templates: { id: string; label: string }[] }>(
+    '/api/import/templates',
+  );
+  return data.templates;
+}
+
 export async function fetchKlines(
   symbol: string,
   timeframe: Timeframe,
@@ -48,10 +96,8 @@ export async function fetchKlines(
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const { data } = await axios.get(url, requestConfig);
-      // Backend returns {symbol, timeframe, data: [{timestamp, open, high, low, close, volume}]}
-      // Convert: timestamp (ms) -> time (seconds) for lightweight-charts
       return data.data.map((k: { timestamp: number; open: number; high: number; low: number; close: number; volume: number }) => ({
-        time: Math.floor(k.timestamp / 1000),  // Convert ms to seconds
+        time: Math.floor(k.timestamp / 1000),
         open: k.open,
         high: k.high,
         low: k.low,
@@ -68,8 +114,6 @@ export async function fetchKlines(
     }
   }
   throw lastError;
-  // Backend returns {symbol, timeframe, data: [{timestamp, open, high, low, close, volume}]}
-  // Convert: timestamp (ms) -> time (seconds) for lightweight-charts
 }
 
 export async function fetchTrades(
@@ -89,10 +133,16 @@ export async function fetchTrades(
   return allTrades;
 }
 
-export async function importTrades(file: File): Promise<{ imported: number }> {
+export async function importTrades(
+  file: File,
+  template: string = 'langge',
+): Promise<{ total: number; success: number; failed: number }> {
   const formData = new FormData();
   formData.append('file', file);
-  const { data } = await axios.post('/api/trades/import', formData);
+  const { data } = await axios.post('/api/trades/import', formData, {
+    params: { template },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return data;
 }
 

@@ -1,18 +1,22 @@
+import os
 import tempfile
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Response
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from database import engine, get_db, Base
-from models import Trade
+from database import get_db
+from migrate import ensure_database
+from models import Trade, Profile
+from profile_scope import get_profile_id
 from services.kline_service import kline_service, TIMEFRAMES
-from services.trade_importer import trade_importer
+from services.trade_importer import trade_importer, TEMPLATES
 from services.trade_analyzer import trade_analyzer
 from services.symbol_utils import normalize_symbol, is_valid_symbol
 
-Base.metadata.create_all(bind=engine)
+ensure_database()
 
 app = FastAPI(title="Trading Replay API")
 
@@ -23,6 +27,65 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class ProfileCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=128)
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=128)
+
+
+@app.get("/api/import/templates")
+def list_import_templates():
+    return {"templates": [{"id": k, "label": k} for k in TEMPLATES]}
+
+
+@app.get("/api/profiles")
+def list_profiles(db: Session = Depends(get_db)):
+    rows = db.query(Profile).order_by(Profile.id).all()
+    return {
+        "data": [
+            {"id": p.id, "name": p.name, "user_id": p.user_id, "created_at": p.created_at}
+            for p in rows
+        ]
+    }
+
+
+@app.post("/api/profiles")
+def create_profile(body: ProfileCreate, db: Session = Depends(get_db)):
+    if db.query(Profile).filter(Profile.name == body.name).first():
+        raise HTTPException(400, "Profile name already exists")
+    p = Profile(name=body.name)
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return {"id": p.id, "name": p.name, "user_id": p.user_id, "created_at": p.created_at}
+
+
+@app.patch("/api/profiles/{profile_id}")
+def update_profile(profile_id: int, body: ProfileUpdate, db: Session = Depends(get_db)):
+    p = db.query(Profile).filter(Profile.id == profile_id).first()
+    if not p:
+        raise HTTPException(404, "Profile not found")
+    other = db.query(Profile).filter(Profile.name == body.name, Profile.id != profile_id).first()
+    if other:
+        raise HTTPException(400, "Profile name already exists")
+    p.name = body.name
+    db.commit()
+    db.refresh(p)
+    return {"id": p.id, "name": p.name, "user_id": p.user_id, "created_at": p.created_at}
+
+
+@app.delete("/api/profiles/{profile_id}")
+def delete_profile(profile_id: int, db: Session = Depends(get_db)):
+    p = db.query(Profile).filter(Profile.id == profile_id).first()
+    if not p:
+        raise HTTPException(404, "Profile not found")
+    db.delete(p)
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/klines/{symbol}/{timeframe}")
@@ -62,22 +125,38 @@ def get_klines(
 
 
 @app.post("/api/trades/import")
-async def import_trades(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(400, "Only Excel files (.xlsx, .xls) are supported")
+async def import_trades(
+    request: Request,
+    file: UploadFile = File(...),
+    template: str = Query("langge"),
+    db: Session = Depends(get_db),
+):
+    profile_id = get_profile_id(request, db)
+    if template not in TEMPLATES:
+        raise HTTPException(400, f"Unknown template. Supported: {list(TEMPLATES)}")
+    if not file.filename:
+        raise HTTPException(400, "Missing filename")
+    fn = file.filename.lower()
+    if not fn.endswith((".xlsx", ".xls", ".csv")):
+        raise HTTPException(400, "Only .xlsx, .xls, .csv are supported")
+    suffix = ".csv" if fn.endswith(".csv") else ".xlsx"
+    tmp_path = ""
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-        result = trade_importer.parse_excel(db, tmp_path)
-        return result
+        return trade_importer.parse_file(db, tmp_path, profile_id, template)
     except Exception as e:
         raise HTTPException(500, str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @app.get("/api/trades")
 def get_trades(
+    request: Request,
     symbol: Optional[str] = None,
     start_date: Optional[int] = Query(None, description="Start timestamp (ms)"),
     end_date: Optional[int] = Query(None, description="End timestamp (ms)"),
@@ -85,7 +164,8 @@ def get_trades(
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Trade)
+    profile_id = get_profile_id(request, db)
+    query = db.query(Trade).filter(Trade.profile_id == profile_id)
     if symbol:
         normalized = normalize_symbol(symbol)
         if not is_valid_symbol(normalized):
@@ -125,5 +205,6 @@ def get_trades(
 
 
 @app.get("/api/stats/overview")
-def get_stats_overview(db: Session = Depends(get_db)):
-    return trade_analyzer.calculate_stats(db)
+def get_stats_overview(request: Request, db: Session = Depends(get_db)):
+    profile_id = get_profile_id(request, db)
+    return trade_analyzer.calculate_stats(db, profile_id)
